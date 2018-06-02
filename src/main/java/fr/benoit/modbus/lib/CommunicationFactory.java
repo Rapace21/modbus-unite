@@ -1,8 +1,11 @@
-package fr.benoit.modbus;
+package fr.benoit.modbus.lib;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+
+import static fr.benoit.modbus.lib.RequestType.ACK_NOK;
+import static fr.benoit.modbus.lib.RequestType.ACK_OK;
 
 /**
  * <br>
@@ -45,16 +48,13 @@ public class CommunicationFactory {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
         byte[] modHeader = MODBUS_HEADER.clone();
-        byte[] npduHeader = NPDU_HEADER.clone();
-        byte[] apduHeader = new byte[]{(byte) 0x37, (byte) 0x06, (byte) 0x68, (byte) 0x07};
+        byte[] npduHeader = generateNPDU();
+
+        byte[] apduHeader = createAPDU(RequestType.WRITE_OBJECT);
         byte[] dataHeader = DATA_HEADER.clone();
         int size = values.size();
         byte[] valuesBytes = new byte[size * 2];
 
-        npduHeader[1] = transmitterStation;
-        npduHeader[2] = (byte) (((transmitterNetwork & 0x0F) << 4) + (transmitterPort & 0x0F));
-        npduHeader[3] = receiverStation;
-        npduHeader[4] = (byte) (((receiverNetwork & 0x0F) << 4) + (receiverPort & 0x0F));
 
         dataHeader[0] = (byte) (startAddr & 0x00FF);
         dataHeader[1] = (byte) ((startAddr & 0xFF00) >> 8);
@@ -70,19 +70,8 @@ public class CommunicationFactory {
         }
 
 
-        int bytesCount = 0;
-        byte[] endOfFrame = null;
-        try {
-            stream.write(npduHeader);
-            stream.write(apduHeader);
-            stream.write(dataHeader);
-            stream.write(valuesBytes);
-            endOfFrame = stream.toByteArray();
-            stream.reset();
-            bytesCount = endOfFrame.length;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        byte[] endOfFrame = mergeBytesArrays(npduHeader, apduHeader, dataHeader, valuesBytes);
+        int bytesCount = endOfFrame.length;
 
 
         //size
@@ -98,6 +87,43 @@ public class CommunicationFactory {
 
 
         return frame;
+    }
+
+    public byte[] generateAck(boolean isOk) {
+        byte[] modHeader = MODBUS_HEADER.clone();
+        byte[] npduHeader = generateNPDU();
+        byte[] apduHeader = isOk ? new byte[]{ACK_OK.type} : new byte[]{ACK_NOK.type};
+        byte[] endOfFrame = mergeBytesArrays(npduHeader, apduHeader);
+        int bytesCount = endOfFrame.length;
+        modHeader[5] = (byte) (bytesCount & 0x00FF);
+        modHeader[6] = (byte) (bytesCount & 0xFF00 >> 16);
+        return mergeBytesArrays(modHeader, endOfFrame);
+    }
+
+    private byte[] generateNPDU() {
+        byte[] npduHeader = NPDU_HEADER.clone();
+        npduHeader[1] = transmitterStation;
+        npduHeader[2] = (byte) (((transmitterNetwork & 0x0F) << 4) + (transmitterPort & 0x0F));
+        npduHeader[3] = receiverStation;
+        npduHeader[4] = (byte) (((receiverNetwork & 0x0F) << 4) + (receiverPort & 0x0F));
+        return npduHeader;
+    }
+
+    private byte[] mergeBytesArrays(byte[] ... arrays){
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        for (byte[] array : arrays) {
+            try {
+                stream.write(array);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return stream.toByteArray();
+    }
+
+
+    private byte[] createAPDU(RequestType requestType) {
+        return new byte[]{requestType.type, (byte) 0x06, (byte) 0x68, (byte) 0x07};
     }
 
 }
