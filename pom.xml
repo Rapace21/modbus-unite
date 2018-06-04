@@ -17,6 +17,10 @@
         </dependency>
     </dependencies>
 
+    <scm>
+        <connection>scm:git:git@github.com:Rapace21/modbus-unite.git</connection>
+    </scm>
+
     <build>
         <defaultGoal>clean install</defaultGoal>
         <finalName>${project.name}</finalName>
