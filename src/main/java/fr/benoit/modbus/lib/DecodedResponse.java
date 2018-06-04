@@ -25,6 +25,7 @@ public class DecodedResponse {
     private RequestType responseType;
     private int startAddr;
     private List<Integer> data;
+    private byte[] overflow;
 
     @Override
     public String toString() {

@@ -22,23 +22,26 @@ public class Main {
         InetAddress addr = null;
         InetAddress local = null;
         try {
-            addr = Inet4Address.getLocalHost();
-            local = Inet4Address.getLocalHost();
+            addr = Inet4Address.getByName("172.22.209.253");
+            local = Inet4Address.getByName("172.22.209.78");
         } catch (UnknownHostException e) {
             e.printStackTrace();
         }
         try(Socket s = new Socket(addr, 502, local, 503)) {
             SocketReader reader = new SocketReader(s);
             ByteArrayOutputStream output = new ByteArrayOutputStream();
-            CommunicationFactory factory = new CommunicationFactory(48, 3, 0,
-                    22, 8, 0);
+            CommunicationFactory factory = new CommunicationFactory(48, 8, 0,
+                    3, 8, 0);
             ArrayList<Integer> value = new ArrayList<>();
-            value.add(10);
-            value.add(20);
-            value.add(30);
-            output.write(factory.generateWriteVarFrame(31, value));
+            value.add(1);
+            output.write(factory.generateWriteVarFrame(301, value));
             output.writeTo(s.getOutputStream());
             System.out.println("Printed");
+            output.flush();
+            output.reset();
+            Thread.sleep(1000);
+            output.write(factory.generatereadVarFrame(300, 3));
+            output.writeTo(s.getOutputStream());
             output.flush();
             output.reset();
             reader.join();

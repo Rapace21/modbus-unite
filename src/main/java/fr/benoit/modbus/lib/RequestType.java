@@ -2,7 +2,8 @@ package fr.benoit.modbus.lib;
 
 
 public enum RequestType {
-    WRITE_INTERNAL_WORD((byte) 0x14),
+    READ_OBJECT((byte) 0x36),
+    READ_OBJECT_OK((byte) 0x66),
     WRITE_OBJECT((byte) 0x37),
     ACK_OK((byte) 0xFE),
     ACK_NOK((byte) 0xFD);

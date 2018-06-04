@@ -4,8 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
-import static fr.benoit.modbus.lib.RequestType.ACK_NOK;
-import static fr.benoit.modbus.lib.RequestType.ACK_OK;
+import static fr.benoit.modbus.lib.RequestType.*;
 
 /**
  * <br>
@@ -15,7 +14,8 @@ import static fr.benoit.modbus.lib.RequestType.ACK_OK;
  */
 public class CommunicationFactory {
 
-    private static final byte[] MODBUS_HEADER = {(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00}; //+ 2 octet de longueur
+    private static final byte[] MODBUS_HEADER = {(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
+            (byte) 0x00, (byte) 0x00}; //+ 2 octet de longueur
     private static final byte[] NPDU_HEADER = {(byte) 0xf0, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00};
     //Type + Station E + network|porte E + Station D + network|porte D
 
@@ -25,8 +25,8 @@ public class CommunicationFactory {
     //addr pFaible + addr pFort + qte pFaible + qte pFort
     //Valeurs : 2 octet par valeur
 
-    public static final byte W_MASK_L = (byte) 0x00FF;
-    public static final byte W_MASK_H = (byte) 0xFF00;
+    public static final int W_MASK_L = 0x00FF;
+    public static final int W_MASK_H = 0xFF00;
 
     public static final byte O_MASK_L = (byte) 0x0F;
     public static final byte O_MASK_H = (byte) 0xF0;
@@ -52,7 +52,7 @@ public class CommunicationFactory {
 
 
     public byte[] generateWriteVarFrame(int startAddr, List<Integer> values) {
-        byte[] frame = null;
+        byte[] frame;
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
         byte[] modHeader = MODBUS_HEADER.clone();
@@ -65,36 +65,79 @@ public class CommunicationFactory {
 
 
         dataHeader[0] = (byte) (startAddr & W_MASK_L);
-        dataHeader[1] = (byte) ((startAddr & W_MASK_H) >> 8);
+        dataHeader[1] = (byte) (startAddr >> 8);
 
         dataHeader[2] = (byte) (size & W_MASK_L);
-        dataHeader[3] = (byte) ((size & W_MASK_H) >> 8);
+        dataHeader[3] = (byte) (size >> 8);
 
         int counter = 0;
         for (int data : values) {
             valuesBytes[counter] = (byte) (data & W_MASK_L);
-            valuesBytes[counter + 1] = (byte) ((data & W_MASK_H) >> 16);
+            valuesBytes[counter + 1] = (byte) ((data & W_MASK_H) >> 8);
             counter += 2;
         }
 
 
         byte[] endOfFrame = mergeBytesArrays(npduHeader, apduHeader, dataHeader, valuesBytes);
-        int bytesCount = endOfFrame.length;
+        int bytesCount = endOfFrame.length + 1;
 
 
         //size
         modHeader[5] = (byte) (bytesCount & W_MASK_L);
-        modHeader[6] = (byte) ((bytesCount & W_MASK_H) >> 16);
-        try {
-            stream.write(modHeader);
-            stream.write(endOfFrame);
-            frame = stream.toByteArray();
-        } catch (IOException e) {
-            e.printStackTrace();
+        modHeader[6] = (byte) ((bytesCount & W_MASK_H) >> 8);
+        frame = mergeBytesArrays(modHeader, endOfFrame);
+
+        return frame;
+    }
+
+    public byte[] generateReadVarResponse(List<Integer> values) {
+        byte[] frame;
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+
+        byte[] modHeader = MODBUS_HEADER.clone();
+        byte[] npduHeader = generateNPDU();
+
+        byte[] apduHeader = new byte[]{READ_OBJECT_OK.type, 0x07};
+        int size = values.size();
+        byte[] valuesBytes = new byte[size * 2];
+
+
+        int counter = 0;
+        for (int data : values) {
+            valuesBytes[counter] = (byte) (data & W_MASK_L);
+            valuesBytes[counter + 1] = (byte) ((data & W_MASK_H) >> 8);
+            counter += 2;
         }
 
 
+        byte[] endOfFrame = mergeBytesArrays(npduHeader, apduHeader, valuesBytes);
+        int bytesCount = endOfFrame.length + 1;
+
+
+        //size
+        modHeader[5] = (byte) (bytesCount & W_MASK_L);
+        modHeader[6] = (byte) (bytesCount >> 8);
+        frame = mergeBytesArrays(modHeader, endOfFrame);
         return frame;
+    }
+
+    public byte[] generatereadVarFrame(int startAddr, int nbrToRead) {
+        byte[] modHeader = MODBUS_HEADER.clone();
+        byte[] npduHeader = generateNPDU();
+        byte[] apduHeader = createAPDU(READ_OBJECT);
+        byte[] valuesBytes = new byte[4];
+
+        valuesBytes[0] = (byte) (startAddr & W_MASK_L);
+        valuesBytes[1] = (byte) ((startAddr & W_MASK_H) >> 8);
+        valuesBytes[2] = (byte) (nbrToRead & W_MASK_L);
+        valuesBytes[3] = (byte) ((nbrToRead & W_MASK_H) >> 8);
+
+        byte[] endOfFrame = mergeBytesArrays(npduHeader, apduHeader, valuesBytes);
+
+        int bytesCount = endOfFrame.length + 1;
+        modHeader[5] = (byte) (bytesCount & W_MASK_L);
+        modHeader[6] = (byte) ((bytesCount & W_MASK_H) >> 8);
+        return mergeBytesArrays(modHeader, endOfFrame);
     }
 
     public byte[] generateAck(boolean isOk) {
@@ -102,9 +145,9 @@ public class CommunicationFactory {
         byte[] npduHeader = generateNPDU();
         byte[] apduHeader = isOk ? new byte[]{ACK_OK.type} : new byte[]{ACK_NOK.type};
         byte[] endOfFrame = mergeBytesArrays(npduHeader, apduHeader);
-        int bytesCount = endOfFrame.length;
+        int bytesCount = endOfFrame.length + 1;
         modHeader[5] = (byte) (bytesCount & W_MASK_L);
-        modHeader[6] = (byte) ((bytesCount & W_MASK_H) >> 16);
+        modHeader[6] = (byte) ((bytesCount & W_MASK_H) >> 8);
         return mergeBytesArrays(modHeader, endOfFrame);
     }
 

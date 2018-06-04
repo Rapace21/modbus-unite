@@ -1,6 +1,7 @@
 package fr.benoit.modbus.lib;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class UniteInterpreter {
 
@@ -14,16 +15,21 @@ public class UniteInterpreter {
         }
 
         int size = getSize(raw);
-        if (size != raw.length - 7) {
-            System.out.println("Size missmatch, return : null");
-            return null;
+        if (size != raw.length - 6) {
+            if (size < raw.length - 6) {
+                response.setOverflow(Arrays.copyOfRange(raw, size + 6, raw.length));
+                raw = Arrays.copyOfRange(raw, 0, size + 6);
+            } else {
+                System.out.println("Size missmatch, return : null");
+                return null;
+            }
         }
 
-        if (raw[7] != (byte) 0xF0) {
+        /*if (raw[7] != (byte) 0xF0) {
             System.out.println("Bad address type, or bad NPDU type, return : null");
             System.out.printf("0x%04X", raw[7]);
             return null;
-        }
+        }*/
 
         //Decode addresses
         response.setTransmitterStation(raw[8]);
@@ -44,6 +50,42 @@ public class UniteInterpreter {
         if (type == RequestType.ACK_OK || type == RequestType.ACK_NOK) {
             return response;
         }
+        switch (type) {
+            case ACK_NOK:
+            case ACK_OK:
+                return response;
+            case WRITE_OBJECT:
+                return getWriteObjectResponse(raw, response);
+            case READ_OBJECT:
+                return getReadObjectFrame(raw, response);
+            case READ_OBJECT_OK:
+                return getReadObjectResponse(raw, response);
+            default:
+                return null;
+        }
+
+    }
+
+    private static DecodedResponse getReadObjectFrame(byte[] raw, DecodedResponse response) {
+        response.setStartAddr((raw[17] << 8) + raw[16]);
+        ArrayList<Integer> data = new ArrayList<>();
+        data.add((raw[19] << 8) + raw[18]);
+        response.setData(data);
+        return response;
+    }
+
+    private static DecodedResponse getReadObjectResponse(byte[] raw, DecodedResponse response) {
+        ArrayList<Integer> data = new ArrayList<>();
+        int offset = 0;
+        for (int i = 0; i < (raw.length - 13) / 2; i++) {
+            data.add((raw[15 + offset] << 8) + raw[14 + offset]);
+            offset += 2;
+        }
+        response.setData(data);
+        return response;
+    }
+
+    private static DecodedResponse getWriteObjectResponse(byte[] raw, DecodedResponse response) {
         response.setStartAddr((raw[17] << 8) + raw[16]);
         int nbr = (raw[19] << 8) + raw[18];
         ArrayList<Integer> data = new ArrayList<>();
