@@ -30,7 +30,8 @@ public class Main {
         try(Socket s = new Socket(addr, 502, local, 503)) {
             SocketReader reader = new SocketReader(s);
             ByteArrayOutputStream output = new ByteArrayOutputStream();
-            CommunicationFactory factory = new CommunicationFactory(48, 3, 0, 22, 8, 0);
+            CommunicationFactory factory = new CommunicationFactory(48, 3, 0,
+                    22, 8, 0);
             ArrayList<Integer> value = new ArrayList<>();
             value.add(10);
             value.add(20);

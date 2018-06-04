@@ -21,8 +21,16 @@ public class CommunicationFactory {
 
     //APDU : Code requette + Cat 6 + seg + type
     private static final byte[] DATA_HEADER = {(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00};
+
     //addr pFaible + addr pFort + qte pFaible + qte pFort
     //Valeurs : 2 octet par valeur
+
+    public static final byte W_MASK_L = (byte) 0x00FF;
+    public static final byte W_MASK_H = (byte) 0xFF00;
+
+    public static final byte O_MASK_L = (byte) 0x0F;
+    public static final byte O_MASK_H = (byte) 0xF0;
+
 
     private byte transmitterStation;
     private byte transmitterNetwork;
@@ -34,12 +42,12 @@ public class CommunicationFactory {
 
     public CommunicationFactory(int transmitterStation, int transmitterNetwork, int transmitterPort, int receiverStation,
                                 int receiverNetwork, int receiverPort) {
-        this.transmitterStation = (byte) transmitterStation;
-        this.transmitterNetwork = (byte) transmitterNetwork;
-        this.transmitterPort = (byte) transmitterPort;
-        this.receiverStation = (byte) receiverStation;
-        this.receiverNetwork = (byte) receiverNetwork;
-        this.receiverPort = (byte) receiverPort;
+        this.transmitterStation = (byte) (transmitterStation & W_MASK_L);
+        this.transmitterNetwork = (byte) (transmitterNetwork & O_MASK_L);
+        this.transmitterPort = (byte) (transmitterPort & O_MASK_L);
+        this.receiverStation = (byte) (receiverStation & W_MASK_L);
+        this.receiverNetwork = (byte) (receiverNetwork & O_MASK_L);
+        this.receiverPort = (byte) (receiverPort & O_MASK_L);
     }
 
 
@@ -56,16 +64,16 @@ public class CommunicationFactory {
         byte[] valuesBytes = new byte[size * 2];
 
 
-        dataHeader[0] = (byte) (startAddr & 0x00FF);
-        dataHeader[1] = (byte) ((startAddr & 0xFF00) >> 8);
+        dataHeader[0] = (byte) (startAddr & W_MASK_L);
+        dataHeader[1] = (byte) ((startAddr & W_MASK_H) >> 8);
 
-        dataHeader[2] = (byte) (size & 0x00FF);
-        dataHeader[3] = (byte) ((size & 0xFF00) >> 8);
+        dataHeader[2] = (byte) (size & W_MASK_L);
+        dataHeader[3] = (byte) ((size & W_MASK_H) >> 8);
 
         int counter = 0;
         for (int data : values) {
-            valuesBytes[counter] = (byte) (data & 0x00FF);
-            valuesBytes[counter + 1] = (byte) ((data & 0xFF00) >> 16);
+            valuesBytes[counter] = (byte) (data & W_MASK_L);
+            valuesBytes[counter + 1] = (byte) ((data & W_MASK_H) >> 16);
             counter += 2;
         }
 
@@ -75,8 +83,8 @@ public class CommunicationFactory {
 
 
         //size
-        modHeader[5] = (byte) (bytesCount & 0x00FF);
-        modHeader[6] = (byte) (bytesCount & 0xFF00 >> 16);
+        modHeader[5] = (byte) (bytesCount & W_MASK_L);
+        modHeader[6] = (byte) ((bytesCount & W_MASK_H) >> 16);
         try {
             stream.write(modHeader);
             stream.write(endOfFrame);
@@ -95,21 +103,21 @@ public class CommunicationFactory {
         byte[] apduHeader = isOk ? new byte[]{ACK_OK.type} : new byte[]{ACK_NOK.type};
         byte[] endOfFrame = mergeBytesArrays(npduHeader, apduHeader);
         int bytesCount = endOfFrame.length;
-        modHeader[5] = (byte) (bytesCount & 0x00FF);
-        modHeader[6] = (byte) (bytesCount & 0xFF00 >> 16);
+        modHeader[5] = (byte) (bytesCount & W_MASK_L);
+        modHeader[6] = (byte) ((bytesCount & W_MASK_H) >> 16);
         return mergeBytesArrays(modHeader, endOfFrame);
     }
 
     private byte[] generateNPDU() {
         byte[] npduHeader = NPDU_HEADER.clone();
         npduHeader[1] = transmitterStation;
-        npduHeader[2] = (byte) (((transmitterNetwork & 0x0F) << 4) + (transmitterPort & 0x0F));
+        npduHeader[2] = (byte) (((byte) (transmitterNetwork & O_MASK_L) << 4) + (byte) (transmitterPort & O_MASK_L));
         npduHeader[3] = receiverStation;
-        npduHeader[4] = (byte) (((receiverNetwork & 0x0F) << 4) + (receiverPort & 0x0F));
+        npduHeader[4] = (byte) (((byte) (receiverNetwork & O_MASK_L) << 4) + (byte) (receiverPort & O_MASK_L));
         return npduHeader;
     }
 
-    private byte[] mergeBytesArrays(byte[] ... arrays){
+    private byte[] mergeBytesArrays(byte[]... arrays) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         for (byte[] array : arrays) {
             try {

@@ -27,12 +27,12 @@ public class UniteInterpreter {
 
         //Decode addresses
         response.setTransmitterStation(raw[8]);
-        response.setTransmitterNetwork((byte) (raw[9] >> 8));
-        response.setTransmitterPort((byte) (raw[9] & 0x00FF));
+        response.setTransmitterNetwork((byte) ((raw[9] >> 4) & (byte) 0x0F));
+        response.setTransmitterPort((byte) (raw[9] & (byte) 0x0F));
 
         response.setReceiverStation(raw[10]);
-        response.setReceiverNetwork((byte) (raw[11] >> 8));
-        response.setReceiverPort((byte) (raw[11] & 0x00FF));
+        response.setReceiverNetwork((byte) ((raw[11] >> 4) & (byte) 0x0F));
+        response.setReceiverPort((byte) (raw[11] & (byte) 0x0F));
 
         //Decode APDU
         RequestType type = RequestType.getByByte(raw[12]);
@@ -41,7 +41,7 @@ public class UniteInterpreter {
             return null;
         }
         response.setResponseType(type);
-        if(type == RequestType.ACK_OK || type == RequestType.ACK_NOK){
+        if (type == RequestType.ACK_OK || type == RequestType.ACK_NOK) {
             return response;
         }
         response.setStartAddr((raw[17] << 8) + raw[16]);

@@ -60,7 +60,7 @@ public class SocketReader extends Thread {
                             System.out.println("Receive OK");
                             break;
                         default:
-                                outputStream.write(com.generateAck(false));
+                            outputStream.write(com.generateAck(false));
                     }
                 }
 
