@@ -22,8 +22,8 @@ public class Main {
         InetAddress addr = null;
         InetAddress local = null;
         try {
-            addr = Inet4Address.getByName("172.22.209.253");
-            local = Inet4Address.getByName("172.22.209.78");
+            addr = Inet4Address.getLocalHost();//getByName("172.22.209.253");
+            local = Inet4Address.getLocalHost();//getByName("172.22.209.78");
         } catch (UnknownHostException e) {
             e.printStackTrace();
         }

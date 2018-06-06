@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Getter
@@ -22,6 +23,9 @@ public class DecodedResponse {
     private byte receiverNetwork;
     private byte receiverPort;
 
+    private boolean extended = false;
+    private byte extended_value;
+
     private RequestType responseType;
     private int startAddr;
     private List<Integer> data;
@@ -36,9 +40,12 @@ public class DecodedResponse {
                 ", receiverStation=" + receiverStation +
                 ", receiverNetwork=" + receiverNetwork +
                 ", receiverPort=" + receiverPort +
+                ", extended=" + extended +
+                ", extended_value=" + extended_value +
                 ", responseType=" + responseType +
                 ", startAddr=" + startAddr +
                 ", data=" + data +
+                ", overflow=" + Arrays.toString(overflow) +
                 '}';
     }
 }
